@@ -1,9 +1,11 @@
 export default defineNuxtConfig({
+  // 🚀 CRITICAL FIX: Disables server-side pre-rendering so WebGL meshes aren't stripped
+  ssr: false, 
+  
   compatibilityDate: '2026-07-22',
   modules: [
     '@tresjs/nuxt'
   ],
-  // ADD THIS SCRIPT LOADING LAYER BELOW:
   tres: {
     glsl: true,
     devtools: false
