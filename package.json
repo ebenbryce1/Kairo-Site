@@ -1,0 +1,21 @@
+{
+  "name": "my-robot-site",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@tresjs/cientos": "^5.8.1",
+    "@tresjs/nuxt": "^5.6.3",
+    "gsap": "^3.15.0",
+    "nuxt": "^4.5.0",
+    "three": "^0.185.1",
+    "vue": "^3.5.40",
+    "vue-router": "^5.2.0"
+  }
+}
