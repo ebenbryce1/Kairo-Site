@@ -1,12 +1,10 @@
-<!-- app/app.vue -->
 <template>
   <main style="height: 400vh; background: #0a0a0a; color: white;">
     <!-- Fixed 3D Viewport -->
     <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;">
       <ClientOnly>
-        <TresCanvas window-size clear-color="#0a0a0a">
-          <CubeScene :progress="scrollProgress" />
-        </TresCanvas>
+        <!-- Nuxt automatically auto-imports CubeScene from your components folder -->
+        <CubeScene :progress="scrollProgress" />
       </ClientOnly>
     </div>
 
@@ -47,7 +45,6 @@
 import { ref, onMounted } from 'vue'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import CubeScene from './components/CubeScene.vue'
 
 const scrollProgress = ref(0)
 
