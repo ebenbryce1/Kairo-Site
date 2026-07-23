@@ -10,8 +10,6 @@
 </template>
 
 <script setup>
-import CubeSceneContent from './CubeSceneContent.vue'
-
 defineProps({
   progress: {
     type: Number,
@@ -28,6 +26,6 @@ defineProps({
   top: 0;
   left: 0;
   /* Crucial for mobile: passes touch gestures straight through to the scroll container */
-  pointer-events: none; 
+  pointer-events: none;
 }
 </style>

@@ -18,6 +18,7 @@ export default defineNuxtConfig({
 
   vite: {
     base: '/Kairo-Site/',
+    assetsInclude: ['**/*.glb', '**/*.gltf'], // Tells Vite to handle 3D models properly
     resolve: {
       dedupe: ['vue', 'three']
     }

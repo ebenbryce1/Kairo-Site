@@ -41,20 +41,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue' // cite: 2
-import gsap from 'gsap' // cite: 2
-import { ScrollTrigger } from 'gsap/ScrollTrigger' // cite: 2
-import CubeScene from '~/components/CubeScene.vue' // Explicit import for production builds
+import { ref, onMounted } from 'vue'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import CubeScene from '~/components/CubeScene.vue'
 
-const scrollProgress = ref(0) // cite: 2
+const scrollProgress = ref(0)
 
 onMounted(() => {
   gsap.registerPlugin(ScrollTrigger)
 
-  // Prevents mobile address bar resize events from breaking scroll calculations
   ScrollTrigger.config({ ignoreMobileResize: true })
 
-  // Master Scroll Timeline
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: '#scroll-container',
@@ -64,14 +62,12 @@ onMounted(() => {
     }
   })
 
-  // 1. Progress driver for 3D rotation & zoom
   tl.to(scrollProgress, {
     value: 1,
     ease: 'none',
     duration: 3
   }, 0)
 
-  // 2. Hero Text fades out quickly on initial scroll
   tl.to('#hero-text', {
     opacity: 0,
     y: -50,
@@ -79,7 +75,6 @@ onMounted(() => {
     ease: 'power1.out'
   }, 0)
 
-  // 3. Label 1 Fades In when zoomed halfway
   tl.fromTo('#label-1', 
     { opacity: 0, x: -30 }, 
     { opacity: 1, x: 0, duration: 0.8 }, 
@@ -87,7 +82,6 @@ onMounted(() => {
   )
   .to('#label-1', { opacity: 0, x: -30, duration: 0.5 }, 1.8)
 
-  // 4. Label 2 Fades In near full zoom
   tl.fromTo('#label-2', 
     { opacity: 0, x: 30 }, 
     { opacity: 1, x: 0, duration: 0.8 }, 
