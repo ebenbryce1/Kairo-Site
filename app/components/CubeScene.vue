@@ -1,22 +1,24 @@
 <!-- components/CubeScene.vue -->
 <template>
+  <ClientOnly>
   <!-- 1. The Canvas container (ClientOnly handled by app.vue wrapper) -->
-  <TresCanvas window-size clear-color="#0a0a0a">
-    
-    <!-- 2. Pure ThreeJS Scene Elements -->
-    <TresPerspectiveCamera ref="cameraRef" :position="[3, 2, 5]" :look-at="[0, 0, 0]" />
-    <TresAmbientLight :intensity="1.5" />
-    <TresDirectionalLight :position="[5, 5, 5]" :intensity="3" />
+    <TresCanvas window-size clear-color="#0a0a0a">
+      
+      <!-- 2. Pure ThreeJS Scene Elements -->
+      <TresPerspectiveCamera ref="cameraRef" :position="[3, 2, 5]" :look-at="[0, 0, 0]" />
+      <TresAmbientLight :intensity="1.5" />
+      <TresDirectionalLight :position="[5, 5, 5]" :intensity="3" />
 
-    <TresMesh ref="cubeRef" :rotation="[0.4, 0.4, 0]">
-      <TresBoxGeometry :args="[1.5, 1.5, 1.5]" />
-      <TresMeshStandardMaterial color="#00ffcc" :roughness="0.2" :metalness="0.8" />
-    </TresMesh>
+      <TresMesh ref="cubeRef" :rotation="[0.4, 0.4, 0]">
+        <TresBoxGeometry :args="[1.5, 1.5, 1.5]" />
+        <TresMeshStandardMaterial color="#00ffcc" :roughness="0.2" :metalness="0.8" />
+      </TresMesh>
 
-    <!-- 3. An inline sub-component containing the useLoop hook -->
-    <RenderLoopDriver :progress="progress" @update:scene="handleSceneUpdates" />
+      <!-- 3. An inline sub-component containing the useLoop hook -->
+      <RenderLoopDriver :progress="progress" @update:scene="handleSceneUpdates" />
 
-  </TresCanvas>
+    </TresCanvas>
+  </ClientOnly>
 </template>
 
 <script setup>
