@@ -2,8 +2,8 @@
 <template>
   <!-- The Canvas sets up the context provider first -->
   <TresCanvas window-size clear-color="#0a0a0a">
-    <!-- The actual scene content runs as a child, solving the context error -->
-    <CubeSceneContent :progress="progress" />
+    <!-- Updated tag to match lowercase file auto-import resolution -->
+    <cubescenecontent :progress="progress" />
   </TresCanvas>
 </template>
 
