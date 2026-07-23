@@ -1,29 +1,25 @@
+// nuxt.config.ts
 export default defineNuxtConfig({
-  ssr: false, // cite: 1
-  
-  compatibilityDate: '2026-07-22', // cite: 1
+  ssr: false,
+
+  compatibilityDate: '2026-07-22',
   modules: [
-    '@tresjs/nuxt' // cite: 1
+    '@tresjs/nuxt'
   ],
-  tres: {
-    devtools: false // Remove glsl: true unless actively writing GLSL shaders
-  },
+  
   app: {
-    baseURL: '/Kairo-Site/' // cite: 1
+    baseURL: '/Kairo-Site/',
+    buildAssetsDir: '/_nuxt/'
   },
+
   nitro: {
-    preset: 'github-pages' // cite: 1
+    preset: 'github-pages'
   },
-  build: {
-    transpile: ['three', '@tresjs/core', '@tresjs/nuxt']
-  },
+
   vite: {
-    base: '/Kairo-Site/', // cite: 1
+    base: '/Kairo-Site/',
     resolve: {
-      dedupe: ['vue', 'three'] // cite: 1
-    },
-    optimizeDeps: {
-      include: ['three', '@tresjs/core']
+      dedupe: ['vue', 'three']
     }
   }
 })
