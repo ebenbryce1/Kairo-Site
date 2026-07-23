@@ -2,7 +2,7 @@
 <template>
   <ClientOnly>
     <div class="canvas-wrapper">
-      <TresCanvas clear-color="#0a0a0a">
+      <TresCanvas window-size clear-color="#0a0a0a">
         <CubeSceneContent :progress="progress" />
       </TresCanvas>
     </div>
