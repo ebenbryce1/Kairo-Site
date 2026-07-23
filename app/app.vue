@@ -42,11 +42,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ref, onMounted } from 'vue' // cite: 2
+import gsap from 'gsap' // cite: 2
+import { ScrollTrigger } from 'gsap/ScrollTrigger' // cite: 2
+import CubeScene from '~/components/CubeScene.vue' // Explicit import for production builds
 
-const scrollProgress = ref(0)
+const scrollProgress = ref(0) // cite: 2
 
 onMounted(() => {
   gsap.registerPlugin(ScrollTrigger)
