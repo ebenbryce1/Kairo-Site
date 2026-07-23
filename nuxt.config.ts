@@ -3,11 +3,21 @@ export default defineNuxtConfig({
   modules: [
     '@tresjs/nuxt'
   ],
-  // Add the lines below:
+  // ADD THIS SCRIPT LOADING LAYER BELOW:
+  tres: {
+    glsl: true,
+    devtools: false
+  },
   app: {
     baseURL: '/Kairo-Site/' 
   },
   nitro: {
     preset: 'github-pages'
+  },
+  vite: {
+    base: '/Kairo-Site/',
+    resolve: {
+      dedupe: ['vue', 'three']
+    }
   }
 })
