@@ -27,5 +27,7 @@ defineProps({
   position: absolute;
   top: 0;
   left: 0;
+  /* Crucial for mobile: passes touch gestures straight through to the scroll container */
+  pointer-events: none; 
 }
 </style>

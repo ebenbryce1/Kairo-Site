@@ -1,9 +1,8 @@
 <template>
   <main style="height: 400vh; background: #0a0a0a; color: white;">
-    <!-- Fixed 3D Viewport -->
-    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;">
+    <!-- Fixed Viewport -->
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 1;">
       <ClientOnly>
-        <!-- Nuxt automatically auto-imports CubeScene from your components folder -->
         <CubeScene :progress="scrollProgress" />
       </ClientOnly>
     </div>
@@ -51,6 +50,9 @@ const scrollProgress = ref(0) // cite: 2
 
 onMounted(() => {
   gsap.registerPlugin(ScrollTrigger)
+
+  // Prevents mobile address bar resize events from breaking scroll calculations
+  ScrollTrigger.config({ ignoreMobileResize: true })
 
   // Master Scroll Timeline
   const tl = gsap.timeline({
