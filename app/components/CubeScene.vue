@@ -3,7 +3,11 @@
   <ClientOnly>
     <div class="canvas-wrapper">
       <TresCanvas window-size clear-color="#0a0a0a">
-        <CubeSceneContent :progress="progress" />
+        <CubeSceneContent
+          :progress="progress"
+          :scene-id="sceneId"
+          @caption-change="(name) => $emit('caption-change', name)"
+        />
       </TresCanvas>
     </div>
   </ClientOnly>
@@ -14,8 +18,14 @@ defineProps({
   progress: {
     type: Number,
     default: 0
+  },
+  sceneId: {
+    type: String,
+    default: 'hero'
   }
 })
+
+defineEmits(['caption-change'])
 </script>
 
 <style scoped>
