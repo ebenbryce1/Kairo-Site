@@ -20,8 +20,8 @@
 </template>
 
 <script setup>
-import { shallowRef, onMounted, onBeforeUnmount, watch, inject } from 'vue'
-import { useLoop, useTresContext } from '@tresjs/core'
+import { shallowRef, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useLoop } from '@tresjs/core'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
@@ -51,20 +51,29 @@ const cyanLightRef = shallowRef(null)
 const warmLightRef = shallowRef(null)
 const loadedScene = shallowRef(null)
 
-// Grab this scene's own TresJS context (renderer, camera, scene) so we can drive
-// the renderer's clear color from the render loop. This is critical for the outro
-// fade-to-white to actually appear instead of staying at the canvas's static clear.
-const tres = useTresContext()
-const renderer = tres?.renderer
-const clearColorObj = new THREE.Color()
-
 const rawBase = '/Kairo-Site/'
 const modelPath = `${rawBase}models/robot.glb`.replace(/\/+/g, '/')
 
+// Hoisted mutable state used across functions/timeline (declared early to keep them
+// out of the Temporal Dead Zone so any function can read them safely).
+let innerGroup = null
+let modelLoaded = false
+let tl = null
+let targetProgress = 0
+let currentProgress = 0
+let activeCaption = null
+
+function applyOpacity(o) {
+  if (!innerGroup) return
+  innerGroup.traverse((child) => {
+    if (child.isMesh && child.material) {
+      child.material.opacity = o
+    }
+  })
+}
+
 // 1. Reactive State Object. rotX stays 0 — model stays upright via baked offset.
 // Two scene presets: 'hero' (intro + spin) and 'showcase' (caption zoom sequence).
-const isHero = props.sceneId === 'hero'
-
 const animState = {
   rotY: 0,
   posX: 0,                 // model container hard translate (hero pushes this right)
@@ -75,34 +84,51 @@ const animState = {
   targetY: 0,
   targetZ: 0,
   opacity: 1,
-  clearR: 0.04, // deep navy tint (animated)
-  clearG: 0.04,
-  clearB: 0.05,
 }
 
-if (isHero) {
-  // Hero preset: big model translated to the right side of the screen. Camera aimed
-  // at the model (not world origin) so the model fills the right half.
-  animState.posX = 2.0
-  animState.camX = 0
-  animState.camY = 0.5
-  animState.camZ = 3.2
-  animState.targetX = 2.0
-  animState.targetY = 0
-  animState.targetZ = 0
-} else {
-  // Showcase preset: model is visible from frame 1; starts at classic centered hero
-  // framing and zooms through the caption sequence.
+// Apply a scene preset to animState. Called on first init AND whenever sceneId swaps.
+function applyPreset(sceneId) {
+  // Reset to neutral baseline first so swaps don't carry stale values across.
+  animState.rotY = 0
   animState.posX = 0
-  animState.camX = 0.6
-  animState.camY = 1.3
-  animState.camZ = 6.5
+  animState.camX = 0
+  animState.camY = 1.5
+  animState.camZ = 7.5
   animState.targetX = 0
   animState.targetY = 0
   animState.targetZ = 0
   animState.opacity = 1
-  animState.rotY = Math.PI * 0.25 // pre-angled for opener
+
+  if (sceneId === 'hero') {
+    // Hero preset: model translated to the right side of the screen. Camera aimed at
+    // the model (not world origin) so the model fills the right half.
+    animState.posX = 2.0
+    animState.camX = 0
+    animState.camY = 0.5
+    animState.camZ = 3.2
+    animState.targetX = 2.0
+    animState.targetY = 0
+    animState.targetZ = 0
+  } else {
+    // Showcase preset: model is visible from frame 1; starts at classic centered hero
+    // framing and zooms through the caption sequence.
+    animState.posX = 0
+    animState.camX = 0.6
+    animState.camY = 1.3
+    animState.camZ = 6.5
+    animState.targetX = 0
+    animState.targetY = 0
+    animState.targetZ = 0
+    animState.opacity = 1
+    animState.rotY = Math.PI * 0.25 // pre-angled for opener
+  }
+
+  // Reset material opacity to full so swaps from a faded-out state don't carry over.
+  if (innerGroup) applyOpacity(1)
 }
+
+let currentSceneId = props.sceneId
+applyPreset(currentSceneId)
 
 // GUI State (dev only)
 const guiState = {
@@ -139,8 +165,6 @@ if (!isProd) {
 onBeforeUnmount(() => {
   if (gui) { gui.destroy(); gui = null }
 })
-
-let tl = null
 
 // Load GLTF on mount
 onMounted(async () => {
@@ -217,28 +241,45 @@ onMounted(async () => {
       dracoLoader.dispose()
 
       initTimeline()
+      modelLoaded = true
+      // If the user already swapped scene presets while we were loading, rebuild
+      // the timeline now so it matches the active scene (not the one we started with).
+      if (currentSceneId !== props.sceneId) {
+        currentSceneId = props.sceneId
+        applyPreset(currentSceneId)
+        initTimeline()
+      }
     }
   } catch (err) {
     console.error('Error during GLTF load:', err)
   }
 })
 
-let innerGroup = null
-
-function applyOpacity(o) {
-  if (!innerGroup) return
-  innerGroup.traverse((child) => {
-    if (child.isMesh && child.material) {
-      child.material.opacity = o
-    }
-  })
-}
+// Watch sceneId for live swaps (single shared canvas). Resets the smoothing,
+// re-applies the new preset, and rebuilds the GSAP timeline so the new scene's
+// animation bands take effect immediately. The model itself is NOT reloaded.
+watch(() => props.sceneId, (newSceneId) => {
+  if (newSceneId === currentSceneId) return
+  currentSceneId = newSceneId
+  // Restart smoothing so the new scene's band boundaries line up with progress=0.
+  targetProgress = 0
+  currentProgress = 0
+  // Clear the active caption when leaving the showcase scene.
+  if (activeCaption !== null) {
+    activeCaption = null
+    emit('caption-change', null)
+  }
+  applyPreset(currentSceneId)
+  if (modelLoaded) {
+    initTimeline()
+  }
+})
 
 // 2. Linear timeline (ease:'none' keeps scrubbed reverse smooth). Two variants.
 function initTimeline() {
   tl = gsap.timeline({ paused: true })
 
-  if (isHero) {
+  if (currentSceneId === 'hero') {
     // ====== HERO SCENE ======
     // One slow 360-degree spin starting immediately on scroll, then hold front-facing.
     // Model stays stationary on the right (no vertical drift, no camera movement).
@@ -254,7 +295,6 @@ function initTimeline() {
       targetY: 0,
       targetZ: 0,
       opacity: 1,
-      clearR: 0.04, clearG: 0.04, clearB: 0.05,
       duration: 0.70,
       ease: 'none'
     })
@@ -270,16 +310,14 @@ function initTimeline() {
       targetY: 0,
       targetZ: 0,
       opacity: 1,
-      clearR: 0.04, clearG: 0.04, clearB: 0.05,
       duration: 0.20,
       ease: 'none'
     })
 
-    // STAGE C (0.90 -> 1.00): fade model out + crossfade to white as user enters
-    // the white intro section. Camera stays put; only opacity & clear color change.
+    // STAGE C (0.90 -> 1.00): fade model out as user enters the white intro section.
+    // Camera stays put; only opacity changes. The white section overlays the canvas.
     .to(animState, {
       opacity: 0,
-      clearR: 1.0, clearG: 1.0, clearB: 1.0,
       duration: 0.10,
       ease: 'none'
     })
@@ -300,13 +338,14 @@ function initTimeline() {
     targetY: 0,
     targetZ: 0,
     opacity: 1,
-    clearR: 0.04, clearG: 0.04, clearB: 0.05,
     duration: 0.08,
     ease: 'none'
   })
 
-  // STAGE C1 (0.08 -> 0.24): Zoom to CLAW (top, left caption).
+  // STAGE C1 (0.08 -> 0.24): Zoom to CLAW (top, left caption). Rotate the model so
+  // the claw faces the camera dead-on side.
   .to(animState, {
+    rotY: Math.PI * 0.5,     // claw dead-on side view
     camX: -0.35,
     camY: 1.3,
     camZ: 2.4,
@@ -314,13 +353,14 @@ function initTimeline() {
     targetY: 0.95,
     targetZ: 0,
     opacity: 1,
-    clearR: 0.04, clearG: 0.04, clearB: 0.05,
     duration: 0.16,
     ease: 'none'
   })
 
-  // STAGE C2 (0.24 -> 0.40): Zoom to BASE GEAR (bottom, right caption).
+  // STAGE C2 (0.24 -> 0.40): Zoom to BASE GEAR (bottom, right caption). Rotate back
+  // to the opener's 0.25π angle.
   .to(animState, {
+    rotY: Math.PI * 0.25,    // return to opener angle
     camX: 0.45,
     camY: -0.8,
     camZ: 2.7,
@@ -328,13 +368,14 @@ function initTimeline() {
     targetY: -1.15,
     targetZ: 0,
     opacity: 1,
-    clearR: 0.04, clearG: 0.04, clearB: 0.05,
     duration: 0.16,
     ease: 'none'
   })
 
-  // STAGE C3 (0.40 -> 0.56): Zoom to MIDDLE GEAR (center rod, left caption).
+  // STAGE C3 (0.40 -> 0.56): Zoom to MIDDLE GEAR (center rod, left caption). Hold
+  // the opener's 0.25π angle.
   .to(animState, {
+    rotY: Math.PI * 0.25,    // hold opener angle
     camX: -0.25,
     camY: 0.15,
     camZ: 2.6,
@@ -342,13 +383,12 @@ function initTimeline() {
     targetY: 0.05,
     targetZ: 0,
     opacity: 1,
-    clearR: 0.04, clearG: 0.04, clearB: 0.05,
     duration: 0.16,
     ease: 'none'
   })
 
-  // STAGE D (0.56 -> 0.687): Fade model out + zoom back + crossfade to white.
-  // Completes at progress 0.687 = 220/320 (exactly end of the showcase section).
+  // STAGE D (0.56 -> 0.687): Fade model out + zoom back. The white outro section
+  // overlays the canvas at z-index 2 so the fade reads as a crossfade to white.
   .to(animState, {
     camX: 0,
     camY: 1.8,
@@ -357,24 +397,17 @@ function initTimeline() {
     targetY: 0,
     targetZ: 0,
     opacity: 0,
-    clearR: 1.0, clearG: 1.0, clearB: 1.0,
     duration: 0.127,
     ease: 'none'
   })
 
-  // STAGE E (0.687 -> 1.00): hold blank white through the outro section.
+  // STAGE E (0.687 -> 1.00): hold blank through the outro section (covered by white).
   .to(animState, {
     opacity: 0,
-    clearR: 1.0, clearG: 1.0, clearB: 1.0,
     duration: 0.313,
     ease: 'none'
   })
 }
-
-// 3. Smooth damping setup
-let targetProgress = 0
-let currentProgress = 0
-let activeCaption = null
 
 watch(() => props.progress, (newVal) => {
   targetProgress = newVal
@@ -400,7 +433,7 @@ onBeforeRender(() => {
 
   // Active-caption bands for the showcase scene (mid-band boundaries avoid flicker).
   let currentCaption = null
-  if (!isHero) {
+  if (currentSceneId === 'showcase') {
     if (currentProgress >= 0.105 && currentProgress < 0.295) {
       currentCaption = 'claw'
     } else if (currentProgress >= 0.295 && currentProgress < 0.495) {
@@ -432,7 +465,7 @@ onBeforeRender(() => {
     // hold after spin completes). Showcase scene: only in the opener + outro plateaus.
     let extraY = 0
     let extraTargetY = 0
-    if (!isHero && (currentProgress < 0.06 || currentProgress > 0.58)) {
+    if (currentSceneId === 'showcase' && (currentProgress < 0.06 || currentProgress > 0.58)) {
       extraY = Math.sin(t * 0.0009) * 0.04
       extraTargetY = Math.sin(t * 0.0009 + 0.6) * 0.02
     }
@@ -450,12 +483,6 @@ onBeforeRender(() => {
   // Apply material opacity whenever it differs from 1 (hero outro + showcase outro).
   if (animState.opacity !== 1) {
     applyOpacity(animState.opacity)
-  }
-
-  // Drive the renderer's clear color from animState so fade-to-white actually appears.
-  if (renderer) {
-    clearColorObj.setRGB(animState.clearR, animState.clearG, animState.clearB)
-    renderer.setClearColor(clearColorObj, 1)
   }
 
   t += 16

@@ -1,13 +1,18 @@
 <template>
-  <main style="height: 640vh; background: #0a0a0a; color: white;">
-    <!-- ───────────── Fixed 3D Viewports (two stacked, independent scenes) ───────────── -->
+  <main style="height: 550vh; background: #0a0a0a; color: white;">
+    <!-- ───────────── Fixed 3D Viewport (single shared canvas) ─────────────
+         ONE <TresCanvas> always mounted. It loads the model ONCE, and swaps its
+         scene presetTimeline when the user scrolls into the showcase section.
+         This sidesteps the dual-canvas provide/inject race that prevented the
+         showcase model from mounting. -->
     <div class="scene-stack" aria-hidden="true">
       <ClientOnly>
-        <div class="scene-layer" :class="{ 'is-on': heroActive }">
-          <CubeScene :progress="heroProgress" :scene-id="'hero'" />
-        </div>
-        <div class="scene-layer" :class="{ 'is-on': showcaseActive }">
-          <CubeScene :progress="showcaseProgress" :scene-id="'showcase'" @caption-change="onCaptionChange" />
+        <div class="scene-layer is-on">
+          <CubeScene
+            :progress="combinedProgress"
+            :scene-id="currentScene"
+            @caption-change="onCaptionChange"
+          />
         </div>
       </ClientOnly>
     </div>
@@ -47,18 +52,18 @@
           <p>Articulated claw assembly engineered for repeatable sub-millimeter pick-and-place cycles.</p>
         </div>
 
-        <div id="caption-base" class="feature-label caption-right">
+        <div id="caption-middle" class="feature-label caption-right">
           <span class="gradient-bar"></span>
-          <span class="tag">02 / BASE GEAR</span>
-          <h2>Drive Foundation</h2>
-          <p>High-torque base gear train delivers smooth rotational anchoring and zero-backlash positioning.</p>
-        </div>
-
-        <div id="caption-middle" class="feature-label caption-left">
-          <span class="gradient-bar"></span>
-          <span class="tag">03 / MIDDLE GEAR</span>
+          <span class="tag">02 / MIDDLE GEAR</span>
           <h2>Transfer Shaft</h2>
           <p>Central rod-like transfer gear couples the drive stack to the gripper axis with matched inertia.</p>
+        </div>
+
+        <div id="caption-base" class="feature-label caption-left">
+          <span class="gradient-bar"></span>
+          <span class="tag">03 / BASE GEAR</span>
+          <h2>Drive Foundation</h2>
+          <p>High-torque base gear train delivers smooth rotational anchoring and zero-backlash positioning.</p>
         </div>
       </section>
 
@@ -81,10 +86,9 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import CubeScene from '~/components/CubeScene.vue'
 
-const heroProgress = ref(0)
-const showcaseProgress = ref(0)
-const heroActive = ref(true)
-const showcaseActive = ref(false)
+// Single shared scene: 'hero' through hero+white-intro, 'showcase' through showcase+outro.
+const currentScene = ref('hero')
+const combinedProgress = ref(0)
 const activeCaption = ref(null)
 
 function onCaptionChange(name) {
@@ -95,18 +99,19 @@ onMounted(() => {
   gsap.registerPlugin(ScrollTrigger)
   ScrollTrigger.config({ ignoreMobileResize: true })
 
-  // ===== Hero scene master timeline. Spans hero + white intro region.
+  // ===== Hero scene master timeline. Spans the HERO SECTION ONLY so the spin + fade
+  // complete entirely within the black hero section and never bleed into the white
+  // intro section below it. Drives combinedProgress 0->1 while currentScene === 'hero'.
   const heroTL = gsap.timeline({
     scrollTrigger: {
       trigger: '#hero-section',
       start: 'top top',
-      endTrigger: '#white-intro-section',
-      end: 'bottom bottom',
+      end: 'bottom top',
       scrub: 0.8,
     }
   })
 
-  heroTL.to(heroProgress, {
+  heroTL.to(combinedProgress, {
     value: 1,
     ease: 'none',
     duration: 3
@@ -120,24 +125,20 @@ onMounted(() => {
     ease: 'power2.out'
   }, 0)
 
-  // Switch scenes at the showcase/white-intro boundary (both fire at the same instant).
+  // ===== Swap to showcase scene at the showcase/white-intro boundary.
   ScrollTrigger.create({
     trigger: '#showcase-section',
     start: 'top top',
     onEnter: () => {
-      heroActive.value = false
-      showcaseActive.value = true
+      currentScene.value = 'showcase'
+      combinedProgress.value = 0
     },
     onLeaveBack: () => {
-      heroActive.value = true
-      showcaseActive.value = false
+      currentScene.value = 'hero'
     },
   })
 
-
   // ===== Showcase scene master timeline. Spans showcase + outro region.
-  // Activation toggling is handled above at the showcase/white-intro boundary
-  // so the hero scene crossfades cleanly into the showcase scene.
   const showcaseTL = gsap.timeline({
     scrollTrigger: {
       trigger: '#showcase-section',
@@ -148,42 +149,17 @@ onMounted(() => {
     }
   })
 
-  showcaseTL.to(showcaseProgress, {
+  showcaseTL.to(combinedProgress, {
     value: 1,
     ease: 'none',
     duration: 3
   }, 0)
-
-  // Deactivate the showcase scene once its outro fade is complete (after the user has
-  // scrolled into the blank outro white section).
-  ScrollTrigger.create({
-    trigger: '#outro-section',
-    start: 'top 50%',
-    onEnter: () => { showcaseActive.value = false },
-    onLeaveBack: () => { showcaseActive.value = true },
-  })
-
-  showcaseTL.to(showcaseProgress, {
-    value: 1,
-    ease: 'none',
-    duration: 3
-  }, 0)
-
-  // Deactivate the showcase scene once its outro fade is complete (after the user has
-  // scrolled into the blank outro white section).
-  ScrollTrigger.create({
-    trigger: '#outro-section',
-    start: 'top 50%',
-    onEnter: () => { showcaseActive.value = false },
-    onLeaveBack: () => { showcaseActive.value = true },
-  })
-
 
   // ===== Caption fade in/out, keyed to SHOWCASE scene progress bands =====
   // Bands in showcase 0-1 space:
   //   claw    0.08 - 0.24  (in 0.08-0.12, hold, out 0.20-0.24)
-  //   base    0.24 - 0.40  (in 0.24-0.28, hold, out 0.36-0.40)
-  //   middle  0.40 - 0.56  (in 0.40-0.44, hold, out 0.52-0.56)
+  //   middle  0.24 - 0.40  (in 0.24-0.28, hold, out 0.36-0.40)
+  //   base    0.40 - 0.56  (in 0.40-0.44, hold, out 0.52-0.56)
   // Showcase master tl duration = 3, so multiply progress by 3.
 
   showcaseTL.fromTo('#caption-claw',
@@ -195,21 +171,21 @@ onMounted(() => {
     opacity: 0, y: -20, duration: 0.04 * 3, ease: 'power2.in'
   }, 0.20 * 3)
 
-  showcaseTL.fromTo('#caption-base',
+  showcaseTL.fromTo('#caption-middle',
     { opacity: 0, y: 24 },
     { opacity: 1, y: 0, duration: 0.04 * 3, ease: 'power3.out' },
     0.24 * 3
   )
-  .to('#caption-base', {
+  .to('#caption-middle', {
     opacity: 0, y: -20, duration: 0.04 * 3, ease: 'power2.in'
   }, 0.36 * 3)
 
-  showcaseTL.fromTo('#caption-middle',
+  showcaseTL.fromTo('#caption-base',
     { opacity: 0, y: 24 },
     { opacity: 1, y: 0, duration: 0.04 * 3, ease: 'power3.out' },
     0.40 * 3
   )
-  .to('#caption-middle', {
+  .to('#caption-base', {
     opacity: 0, y: -20, duration: 0.04 * 3, ease: 'power2.in'
   }, 0.52 * 3)
 
@@ -233,8 +209,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+:global(html),
 :global(body) {
   margin: 0;
+  overflow-x: hidden;
 }
 
 .section {
@@ -263,9 +241,9 @@ onMounted(() => {
 
 /* ===== Hero ===== */
 .hero-sec {
-  /* Tall hero: gives the single 360° spin plenty of scroll room while the model
-     stays stationary on the right side of the viewport. */
-  height: 220vh;
+  /* Short hero: just enough scroll for one quick 360° spin, then the model
+     fades before the user reaches the white intro section. */
+  height: 130vh;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -375,7 +353,7 @@ onMounted(() => {
 .showcase-sec {
   /* 3 caption bands (~80vh each) + opener/outro padding. */
   height: 220vh;
-  background: linear-gradient(180deg, #0a0a0a 0%, #05060a 100%);
+  background: transparent;
 }
 
 /* Caption overlay labels — fixed to the viewport so they stay put as the

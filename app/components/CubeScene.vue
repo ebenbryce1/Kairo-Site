@@ -30,12 +30,11 @@ defineEmits(['caption-change'])
 
 <style scoped>
 .canvas-wrapper {
-  width: 100vw;
-  height: 100vh;
+  /* inset: 0 uses the viewport MINUS the scrollbar; 100vw/100vh include the
+     scrollbar and cause a horizontal scrollbar to appear. /
   position: absolute;
-  top: 0;
-  left: 0;
-  /* Crucial for mobile: passes touch gestures straight through to the scroll container */
+  inset: 0;
+  / Crucial for mobile: passes touch gestures straight through to the scroll container */
   pointer-events: none;
 }
 </style>
