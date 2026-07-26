@@ -342,30 +342,30 @@ function initTimeline() {
     ease: 'none'
   })
 
-  // STAGE C1 (0.08 -> 0.24): Zoom to CLAW (top, left caption). Rotate the model so
-  // the claw faces the camera dead-on side.
+  // STAGE C1 (0.08 -> 0.24): Zoom to CLAW (top, left caption). rotY = 300° brings
+  // the claw dead-on to the camera (calibrated via debug GUI snapshot).
   .to(animState, {
-    rotY: Math.PI * 0.5,     // claw dead-on side view
+    rotY: Math.PI * (300 / 180), // 300° — claw faces camera
     camX: -0.35,
-    camY: 1.3,
+    camY: 1.0,
     camZ: 2.4,
-    targetX: 0.05,
-    targetY: 0.95,
+    targetX: 0,
+    targetY: -1,
     targetZ: 0,
     opacity: 1,
     duration: 0.16,
     ease: 'none'
   })
 
-  // STAGE C2 (0.24 -> 0.40): Zoom to BASE GEAR (bottom, right caption). Rotate back
-  // to the opener's 0.25π angle.
+  // STAGE C2 (0.24 -> 0.40): Zoom to BASE GEAR (bottom, right caption). rotY = -100°
+  // (calibrated via debug GUI snapshot). Camera looks down at the base from above.
   .to(animState, {
-    rotY: Math.PI * 0.25,    // return to opener angle
-    camX: 0.45,
-    camY: -0.8,
+    rotY: Math.PI * (-100 / 180), // -100° — base gear faces camera
+    camX: 0.35,
+    camY: 1.0,
     camZ: 2.7,
-    targetX: 0,
-    targetY: -1.15,
+    targetX: 0.15,
+    targetY: -0.5,
     targetZ: 0,
     opacity: 1,
     duration: 0.16,
